@@ -24,6 +24,13 @@ type Task struct {
 	Status    TaskStatus `gorm:"type:varchar(20);not null;default:todo" json:"status"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
+	// ProjectID is a pointer so a task can have no project (NULL), and so "leave it
+	// alone" (nil in an update) is different from "set it to empty".
+	// The foreign key is left as NO ACTION on purpose: Postgres refuses to delete a
+	// project that still has tasks, so deletes must go through DeleteProject, which
+	// detaches the tasks first. See controllers/project.controller.go.
+	ProjectID *uint      `gorm:"index" json:"project_id"`
+	Project   *Project   `json:"project,omitempty"`
 	Items     []TaskItem `gorm:"constraint:OnDelete:CASCADE" json:"items"`
 }
 
@@ -55,8 +62,12 @@ type TaskItem struct {
 	StartAt     time.Time  `gorm:"not null" json:"start_at"`
 	EndAt       *time.Time `json:"end_at"`
 	ManualHours *float64   `gorm:"type:numeric(6,2)" json:"manual_hours"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	// LastPingAt is refreshed by POST /timers/ping while a browser tab is open. A timer
+	// whose last ping is older than the timeout is stopped by the sweeper, so closing the
+	// tab (or losing the browser) does not leave a timer running forever.
+	LastPingAt *time.Time `json:"last_ping_at"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
 func (item TaskItem) IsRunning() bool {

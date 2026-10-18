@@ -30,7 +30,7 @@ func toTaskResponse(task models.Task) taskResponse {
 
 func RegisterTaskRoutes(mux *http.ServeMux, db *gorm.DB) {
 	mux.HandleFunc("GET /tasks", func(w http.ResponseWriter, r *http.Request) {
-		tasks, err := controllers.GetTasks(db)
+		tasks, err := controllers.GetTasks(r.Context(), db)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -48,7 +48,7 @@ func RegisterTaskRoutes(mux *http.ServeMux, db *gorm.DB) {
 			writeError(w, err)
 			return
 		}
-		task, err := controllers.GetTaskByID(db, id)
+		task, err := controllers.GetTaskByID(r.Context(), db, id)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -62,7 +62,7 @@ func RegisterTaskRoutes(mux *http.ServeMux, db *gorm.DB) {
 			writeError(w, err)
 			return
 		}
-		task, err := controllers.CreateTask(db, input)
+		task, err := controllers.CreateTask(r.Context(), db, input)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -81,7 +81,27 @@ func RegisterTaskRoutes(mux *http.ServeMux, db *gorm.DB) {
 			writeError(w, err)
 			return
 		}
-		task, err := controllers.UpdateTask(db, id, input)
+		task, err := controllers.UpdateTask(r.Context(), db, id, input)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, toTaskResponse(task))
+	})
+
+	// PUT /tasks/{id}/project — body {"project_id": 3} moves the task, {"project_id": null} clears it.
+	mux.HandleFunc("PUT /tasks/{id}/project", func(w http.ResponseWriter, r *http.Request) {
+		id, err := pathID(r)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		var input controllers.SetTaskProjectInput
+		if err := readJSON(r, &input); err != nil {
+			writeError(w, err)
+			return
+		}
+		task, err := controllers.SetTaskProject(r.Context(), db, id, input.ProjectID)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -95,7 +115,7 @@ func RegisterTaskRoutes(mux *http.ServeMux, db *gorm.DB) {
 			writeError(w, err)
 			return
 		}
-		if err := controllers.DeleteTask(db, id); err != nil {
+		if err := controllers.DeleteTask(r.Context(), db, id); err != nil {
 			writeError(w, err)
 			return
 		}

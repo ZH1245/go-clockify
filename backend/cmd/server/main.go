@@ -12,6 +12,7 @@ import (
 
 	"github.com/ZH1245/go-clockify/backend/internal/config"
 	"github.com/ZH1245/go-clockify/backend/internal/database"
+	"github.com/ZH1245/go-clockify/backend/internal/sweeper"
 	"github.com/ZH1245/go-clockify/backend/models"
 	"github.com/ZH1245/go-clockify/backend/routes"
 )
@@ -24,7 +25,8 @@ func main() {
 		log.Fatalf("connect database: %v", err)
 	}
 
-	if err := database.Migrate(db, &models.Task{}, &models.TaskItem{}); err != nil {
+	// Project first: Task has a foreign key to it.
+	if err := database.Migrate(db, &models.Project{}, &models.Task{}, &models.TaskItem{}); err != nil {
 		log.Fatalf("migrate database: %v", err)
 	}
 
@@ -40,6 +42,15 @@ func main() {
 	})
 	routes.RegisterTaskRoutes(mux, db)
 	routes.RegisterTaskItemRoutes(mux, db)
+	routes.RegisterProjectRoutes(mux, db)
+	routes.RegisterDashboardRoutes(mux, db)
+	routes.RegisterTimerRoutes(mux, db)
+
+	// The sweeper is a long-lived background goroutine, so it gets a context of its own
+	// rather than a request context: it must outlive every request. stopSweeper cancels
+	// that context on shutdown, which is what ends the goroutine.
+	sweepCtx, stopSweeper := context.WithCancel(context.Background())
+	sweeper.Start(sweepCtx, db, cfg.SweepInterval, cfg.TimerPingTimeout)
 
 	server := &http.Server{Addr: ":" + cfg.Port, Handler: withCORS(cfg.FrontendOrigin, mux)}
 
@@ -58,6 +69,7 @@ func main() {
 
 	// Stop accepting new requests and give running ones up to 10 seconds to finish.
 	log.Println("shutting down")
+	stopSweeper() // background work with no request to finish, so it stops immediately
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {

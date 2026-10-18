@@ -15,7 +15,7 @@ func RegisterTaskItemRoutes(mux *http.ServeMux, db *gorm.DB) {
 			writeError(w, err)
 			return
 		}
-		item, err := controllers.StartTimer(db, taskID)
+		item, err := controllers.StartTimer(r.Context(), db, taskID)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -35,7 +35,7 @@ func RegisterTaskItemRoutes(mux *http.ServeMux, db *gorm.DB) {
 			writeError(w, err)
 			return
 		}
-		item, err := controllers.AddManualEntry(db, taskID, input)
+		item, err := controllers.AddManualEntry(r.Context(), db, taskID, input)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -49,7 +49,7 @@ func RegisterTaskItemRoutes(mux *http.ServeMux, db *gorm.DB) {
 			writeError(w, err)
 			return
 		}
-		item, err := controllers.StopTimer(db, itemID)
+		item, err := controllers.StopTimer(r.Context(), db, itemID)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -68,7 +68,7 @@ func RegisterTaskItemRoutes(mux *http.ServeMux, db *gorm.DB) {
 			writeError(w, err)
 			return
 		}
-		item, err := controllers.UpdateTaskItem(db, itemID, input)
+		item, err := controllers.UpdateTaskItem(r.Context(), db, itemID, input)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -82,7 +82,7 @@ func RegisterTaskItemRoutes(mux *http.ServeMux, db *gorm.DB) {
 			writeError(w, err)
 			return
 		}
-		if err := controllers.DeleteTaskItem(db, itemID); err != nil {
+		if err := controllers.DeleteTaskItem(r.Context(), db, itemID); err != nil {
 			writeError(w, err)
 			return
 		}

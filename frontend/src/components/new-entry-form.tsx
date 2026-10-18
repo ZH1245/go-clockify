@@ -2,30 +2,36 @@
 
 import { useState } from "react";
 
-import { api, type Task } from "@/lib/api";
+import { api, type Project, type Task } from "@/lib/api";
 import { nowForDateTimeInput } from "@/lib/time";
+
+import { ProjectSelect } from "./project-select";
 
 type Mode = "timer" | "manual";
 
 type Props = {
   tasks: Task[];
+  projects: Project[];
   run: (action: () => Promise<unknown>) => Promise<void>;
 };
 
-export function NewEntryForm({ tasks, run }: Props) {
+export function NewEntryForm({ tasks, projects, run }: Props) {
   const [title, setTitle] = useState("");
   const [mode, setMode] = useState<Mode>("timer");
   const [manualStart, setManualStart] = useState("");
   const [manualHours, setManualHours] = useState("");
+  const [projectId, setProjectId] = useState<number | null>(null);
 
   const trimmed = title.trim();
   const hours = Number(manualHours);
   const canSubmit = trimmed !== "" && (mode === "timer" || (manualStart !== "" && hours > 0));
 
   // Entries are grouped by name: reuse the task with this title if there is one, otherwise create it.
+  // The chosen project only applies when a new task is created; moving an existing task is done
+  // from the task row (PUT /tasks/{id}/project) so this does not quietly rewrite it.
   async function findOrCreateTask(): Promise<Task> {
     const existing = tasks.find((task) => task.title.toLowerCase() === trimmed.toLowerCase());
-    return existing ?? api.createTask(trimmed);
+    return existing ?? api.createTask(trimmed, projectId);
   }
 
   async function submit(event: React.FormEvent) {
@@ -78,36 +84,46 @@ export function NewEntryForm({ tasks, run }: Props) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
-        {mode === "manual" && (
-          <>
-            <input
-              type="datetime-local"
-              value={manualStart}
-              onChange={(event) => setManualStart(event.target.value)}
-              aria-label="When"
-              className="rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 dark:border-zinc-700"
-            />
-            <input
-              type="number"
-              min="0.25"
-              max="24"
-              step="0.25"
-              value={manualHours}
-              onChange={(event) => setManualHours(event.target.value)}
-              placeholder="Hours"
-              aria-label="Hours"
-              className="w-24 rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 dark:border-zinc-700"
-            />
-          </>
-        )}
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {mode === "timer" ? "Start" : "Add"}
-        </button>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <ProjectSelect
+          projects={projects}
+          value={projectId}
+          onChange={setProjectId}
+          label="New task project"
+          className="rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 dark:border-zinc-700"
+        />
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {mode === "manual" && (
+            <>
+              <input
+                type="datetime-local"
+                value={manualStart}
+                onChange={(event) => setManualStart(event.target.value)}
+                aria-label="When"
+                className="rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 dark:border-zinc-700"
+              />
+              <input
+                type="number"
+                min="0.25"
+                max="24"
+                step="0.25"
+                value={manualHours}
+                onChange={(event) => setManualHours(event.target.value)}
+                placeholder="Hours"
+                aria-label="Hours"
+                className="w-24 rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 dark:border-zinc-700"
+              />
+            </>
+          )}
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {mode === "timer" ? "Start" : "Add"}
+          </button>
+        </div>
       </div>
     </form>
   );

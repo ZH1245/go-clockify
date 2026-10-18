@@ -20,12 +20,27 @@ function liveSeconds(item: TaskItem, now: number): number {
   return Math.max(0, (now - Date.parse(item.start_at)) / 1000);
 }
 
+// Live time since an ISO timestamp, used by the dashboard for running timers that
+// are not attached to a loaded Task.
+export function elapsedSeconds(startAt: string, now: number): number {
+  return Math.max(0, (now - Date.parse(startAt)) / 1000);
+}
+
 export function formatDuration(seconds: number): string {
   const total = Math.floor(seconds);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return [h, m, s].map((part) => String(part).padStart(2, "0")).join(":");
+}
+
+// "Total hours" numbers read better as 2h 30m than as a clock.
+export function formatHours(hours: number): string {
+  const minutes = Math.round(hours * 60);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
 export function formatDateTime(iso: string): string {

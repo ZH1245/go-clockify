@@ -15,13 +15,31 @@ var (
 )
 
 type CreateTaskInput struct {
-	Title string `json:"title"`
+	Title     string `json:"title"`
+	ProjectID *uint  `json:"project_id"`
 }
 
 // Nil fields are left unchanged.
 type UpdateTaskInput struct {
 	Title  *string            `json:"title"`
 	Status *models.TaskStatus `json:"status"`
+}
+
+// SetTaskProjectInput is the body of PUT /tasks/{id}/project. Send a number to move the
+// task, or JSON null to take it out of its project.
+type SetTaskProjectInput struct {
+	ProjectID *uint `json:"project_id"`
+}
+
+type CreateProjectInput struct {
+	Title      string `json:"title"`
+	ClientName string `json:"client_name"`
+}
+
+// Nil fields are left unchanged.
+type UpdateProjectInput struct {
+	Title      *string `json:"title"`
+	ClientName *string `json:"client_name"`
 }
 
 // ManualEntryInput is a time entry typed in by hand: when the work happened, and how long.

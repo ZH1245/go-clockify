@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { api, type Task, type TaskStatus } from "@/lib/api";
+import { api, type Project, type Task, type TaskStatus } from "@/lib/api";
 import {
   formatDateTime,
   formatDuration,
@@ -13,8 +13,11 @@ import {
   taskSeconds,
 } from "@/lib/time";
 
+import { ProjectSelect } from "./project-select";
+
 type Props = {
   task: Task;
+  projects: Project[];
   now: number;
   run: (action: () => Promise<unknown>) => Promise<void>;
 };
@@ -25,7 +28,7 @@ const statusLabels: Record<TaskStatus, string> = {
   done: "Done",
 };
 
-export function TaskRow({ task, now, run }: Props) {
+export function TaskRow({ task, projects, now, run }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [manualStart, setManualStart] = useState(nowForDateTimeInput);
   const [manualHours, setManualHours] = useState("");
@@ -55,6 +58,11 @@ export function TaskRow({ task, now, run }: Props) {
             {task.timer_count}
           </span>
           <span className="truncate font-medium">{task.title}</span>
+          {task.project && (
+            <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+              {task.project.title}
+            </span>
+          )}
           <span className="text-zinc-400">{expanded ? "▾" : "▸"}</span>
         </button>
 
@@ -105,6 +113,16 @@ export function TaskRow({ task, now, run }: Props) {
 
       {expanded && (
         <div className="border-t border-zinc-200 px-3 py-3 dark:border-zinc-800">
+          <div className="mb-3 flex items-center gap-2 text-sm">
+            <span className="text-zinc-500">Project:</span>
+            <ProjectSelect
+              projects={projects}
+              value={task.project_id}
+              onChange={(projectId) => void run(() => api.setTaskProject(task.id, projectId))}
+              className="rounded-md border border-zinc-200 bg-transparent px-2 py-1 text-sm dark:border-zinc-700"
+            />
+          </div>
+
           {task.items.length === 0 ? (
             <p className="text-sm text-zinc-500">No time entries yet.</p>
           ) : (

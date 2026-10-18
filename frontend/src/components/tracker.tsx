@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { api, type Task } from "@/lib/api";
+import { api, type Project, type Task } from "@/lib/api";
 import { formatDuration, taskSeconds } from "@/lib/time";
 
 import { NewEntryForm } from "./new-entry-form";
@@ -10,27 +10,28 @@ import { TaskRow } from "./task-row";
 
 export default function Tracker() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Starts at 0 because Next.js pre-renders this page on the server, where the current time must not be read.
   const [now, setNow] = useState(0);
 
-  const loadTasks = useCallback(async () => {
-    try {
-      setTasks(await api.getTasks());
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
+  // Tasks and projects do not depend on each other, so both requests go out together.
+  const loadData = useCallback(async () => {
+    const [nextTasks, nextProjects] = await Promise.all([api.getTasks(), api.getProjects()]);
+    setTasks(nextTasks);
+    setProjects(nextProjects);
+    setError(null);
   }, []);
 
   useEffect(() => {
     let ignore = false;
     async function initialLoad() {
       try {
-        const data = await api.getTasks();
+        const [nextTasks, nextProjects] = await Promise.all([api.getTasks(), api.getProjects()]);
         if (!ignore) {
-          setTasks(data);
+          setTasks(nextTasks);
+          setProjects(nextProjects);
           setNow(Date.now());
         }
       } catch (err) {
@@ -63,9 +64,13 @@ export default function Tracker() {
         return;
       }
       setNow(Date.now());
-      await loadTasks();
+      try {
+        await loadData();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
     },
-    [loadTasks],
+    [loadData],
   );
 
   const totalSeconds = tasks.reduce((sum, task) => sum + taskSeconds(task, now), 0);
@@ -77,7 +82,7 @@ export default function Tracker() {
         <span className="font-mono text-sm text-zinc-500">Total {formatDuration(totalSeconds)}</span>
       </header>
 
-      <NewEntryForm tasks={tasks} run={run} />
+      <NewEntryForm tasks={tasks} projects={projects} run={run} />
 
       {error && (
         <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
@@ -92,7 +97,7 @@ export default function Tracker() {
       ) : (
         <ul className="flex flex-col gap-2">
           {tasks.map((task) => (
-            <TaskRow key={task.id} task={task} now={now} run={run} />
+            <TaskRow key={task.id} task={task} projects={projects} now={now} run={run} />
           ))}
         </ul>
       )}
