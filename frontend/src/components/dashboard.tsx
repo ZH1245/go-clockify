@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { api, type Dashboard as DashboardData } from "@/lib/api";
-import { elapsedSeconds, formatDuration, formatHours, formatTime } from "@/lib/time";
+import { api, type Dashboard as DashboardData, type Task } from "@/lib/api";
+import { elapsedSeconds, formatDuration, formatHours, formatTime, taskSeconds } from "@/lib/time";
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  // Task status is not part of GET /dashboard; the in-progress list comes from GET /tasks.
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // 0 until the first load, so server pre-rendering never reads the clock.
@@ -14,7 +16,9 @@ export default function Dashboard() {
 
   const load = useCallback(async () => {
     try {
-      setData(await api.getDashboard());
+      const [nextData, nextTasks] = await Promise.all([api.getDashboard(), api.getTasks()]);
+      setData(nextData);
+      setTasks(nextTasks);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -25,9 +29,10 @@ export default function Dashboard() {
     let ignore = false;
     async function initialLoad() {
       try {
-        const result = await api.getDashboard();
+        const [nextData, nextTasks] = await Promise.all([api.getDashboard(), api.getTasks()]);
         if (!ignore) {
-          setData(result);
+          setData(nextData);
+          setTasks(nextTasks);
           setNow(Date.now());
         }
       } catch (err) {
@@ -49,6 +54,8 @@ export default function Dashboard() {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [anyRunning]);
+
+  const inProgress = tasks.filter((task) => task.status === "in_progress");
 
   async function refresh() {
     await load();
@@ -105,6 +112,30 @@ export default function Dashboard() {
               </ul>
             ) : (
               <p className="text-sm text-zinc-500">Nothing is running right now.</p>
+            )}
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-sm font-medium text-zinc-500">In progress</h2>
+            {inProgress.length > 0 ? (
+              <ul className="flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+                {inProgress.map((task) => (
+                  <li key={task.id} className="flex items-center gap-3 px-4 py-3 text-sm">
+                    {task.running && <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-blue-500" />}
+                    <span className="min-w-0 flex-1 truncate font-medium">{task.title}</span>
+                    {task.project && (
+                      <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                        {task.project.title}
+                      </span>
+                    )}
+                    <span className={`w-20 shrink-0 text-right font-mono ${task.running ? "text-blue-600" : ""}`}>
+                      {formatDuration(taskSeconds(task, now))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-zinc-500">No tasks are marked in progress.</p>
             )}
           </section>
         </>
