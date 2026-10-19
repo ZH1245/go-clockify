@@ -14,6 +14,7 @@ import {
 } from "@/lib/time";
 
 import { ProjectSelect } from "./project-select";
+import { Select } from "./select";
 
 type Props = {
   task: Task;
@@ -22,11 +23,11 @@ type Props = {
   run: (action: () => Promise<unknown>) => Promise<void>;
 };
 
-const statusLabels: Record<TaskStatus, string> = {
-  todo: "To do",
-  in_progress: "In progress",
-  done: "Done",
-};
+const statusOptions: { value: TaskStatus; label: string }[] = [
+  { value: "todo", label: "To do" },
+  { value: "in_progress", label: "In progress" },
+  { value: "done", label: "Done" },
+];
 
 export function TaskRow({ task, projects, now, run }: Props) {
   const [expanded, setExpanded] = useState(false);
@@ -66,17 +67,12 @@ export function TaskRow({ task, projects, now, run }: Props) {
           <span className="text-zinc-400">{expanded ? "▾" : "▸"}</span>
         </button>
 
-        <select
+        <Select
           value={task.status}
-          onChange={(event) => void run(() => api.updateTaskStatus(task.id, event.target.value as TaskStatus))}
-          className="rounded-md border border-zinc-200 bg-transparent px-2 py-1 text-xs dark:border-zinc-700"
-        >
-          {Object.entries(statusLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+          options={statusOptions}
+          onValueChange={(status) => void run(() => api.updateTaskStatus(task.id, status))}
+          label="Status"
+        />
 
         <span className={`w-20 text-right font-mono text-sm ${runningItem ? "text-blue-600" : ""}`}>
           {formatDuration(taskSeconds(task, now))}
@@ -119,7 +115,7 @@ export function TaskRow({ task, projects, now, run }: Props) {
               projects={projects}
               value={task.project_id}
               onChange={(projectId) => void run(() => api.setTaskProject(task.id, projectId))}
-              className="rounded-md border border-zinc-200 bg-transparent px-2 py-1 text-sm dark:border-zinc-700"
+              className="px-2 py-1 text-sm"
             />
           </div>
 

@@ -90,7 +90,7 @@ export function NewEntryForm({ tasks, projects, run }: Props) {
           value={projectId}
           onChange={setProjectId}
           label="New task project"
-          className="rounded-md border border-zinc-300 bg-transparent px-2 py-1.5 dark:border-zinc-700"
+          className="px-2 py-1.5 text-sm"
         />
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
